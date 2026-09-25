@@ -1,15 +1,15 @@
-"""Exp 2 -- scenarios where few-shot / buffered HDC breaks.
+"""Exp 2: scenarios where few-shot / buffered HDC breaks.
 
 Six synthetic stress tests, all compared across the three configurations
 (few-shot A, full retrain B, buffered retrain C; C also in a random-only
 buffer control where relevant):
 
-* ``overlap``       -- class overlap (SNR sweep)
-* ``label_noise``   -- fraction of flipped training labels
-* ``capacity``      -- hypervector dimension vs number of classes (interference)
-* ``imbalance``     -- long-tailed class counts (overall vs rare-class recall)
-* ``contamination`` -- gross outliers inside the few-shot support set
-* ``noise_dims``    -- irrelevant features added to every sample
+* ``overlap``:       class overlap (SNR sweep)
+* ``label_noise``:   fraction of flipped training labels
+* ``capacity``:      hypervector dimension vs number of classes (interference)
+* ``imbalance``:     long-tailed class counts (overall vs rare-class recall)
+* ``contamination``: gross outliers inside the few-shot support set
+* ``noise_dims``:    irrelevant features added to every sample
 
 Outputs: one CSV + figure per subtest in ``results/``.
 """

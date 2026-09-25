@@ -1,4 +1,4 @@
-"""Exp 3 -- which prototype properties need more samples?
+"""Exp 3: which prototype properties need more samples?
 
 Question 3: how many labelled samples does an HDC class prototype need to
 become (a) a good estimate of the infinite-data prototype and (b) a good

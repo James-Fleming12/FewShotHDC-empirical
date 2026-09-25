@@ -139,7 +139,7 @@ Setup unless stated otherwise: `C=5`, `d=32`, 100 train / 50 test per class,
 5 seeds. Encode budgets at these settings: B = 10500 samples, C = 1000
 (9.5% of B), 50-shot A = 250 (2.4% of B).
 
-## Q1 -- few-shot ability (`exp1_fewshot.csv`)
+## Q1: few-shot ability (`exp1_fewshot.csv`)
 
 Mean test accuracy (chance = 0.20):
 
@@ -161,7 +161,7 @@ Mean test accuracy (chance = 0.20):
   same picture at full settings (SNR 1: 50-shot 0.880, B 0.884, C 0.877;
   `rp`: 0.880 / 0.882 / 0.882).
 
-## Q2 -- where it breaks (`exp2_*.csv`)
+## Q2: where it breaks (`exp2_*.csv`)
 
 ### Class overlap
 
@@ -188,7 +188,7 @@ distribution. Overlap is the primary few-shot failure axis.
 | 0.40 | 0.507 | 0.497 | 0.854 | 0.446 | 0.596 |
 
 * Retraining destroys accuracy under label noise while the plain full-data
-  means (B0) stay at 0.85 -- the strongest breakage found. Paired over all
+  means (B0) stay at 0.85, the strongest breakage found. Paired over all
   noise levels and seeds (`results/summary.md`): B - B0 = -0.124 (p = 1e-4),
   C - B = -0.021 (p = 0.033), A - B = -0.076 (p = 1e-4).
 * **Hard-sample mining amplifies noise**: C (0.446) < B (0.497) << C-rand
@@ -217,8 +217,8 @@ saturates.
 | 2 | 0.755 | 0.624 | 0.774 | 0.416 | 0.802 | 0.528 | 0.775 | 0.416 |
 | 4 | 0.730 | 0.520 | 0.643 | 0.220 | 0.695 | 0.336 | 0.646 | 0.220 |
 
-Rare-class recall collapses for the full-data pipelines -- already in the
-initial means (B0 0.34 at ratio 4) and further under retraining (B/C 0.22) --
+Rare-class recall collapses for the full-data pipelines, already in the
+initial means (B0 0.34 at ratio 4) and further under retraining (B/C 0.22),
 while balanced few-shot support holds 0.52 and even wins overall accuracy at
 ratio 4 (0.730 vs 0.643). Balanced support is the property that protects rare
 classes (see Q4 for natural support).
@@ -247,7 +247,7 @@ unaffected because their pool is clean.
 Few-shot breaks much earlier under feature dilution; full-data variants absorb
 noise dimensions until `d_noise ~ q`.
 
-## Q3 -- prototypes that need more samples (`exp3_*.csv`)
+## Q3: prototypes that need more samples (`exp3_*.csv`)
 
 cos(few-shot prototype, oracle prototype) (oracle = class mean over 5000
 clean samples from the same centroids):
@@ -285,7 +285,7 @@ Shots to target accuracy (log-interpolated means):
   d<=16), more classes hurt (1.5 -> 6.9 -> 22.4 shots for C = 2 -> 5 -> 10):
   prototype interference is a first-order driver of sample complexity.
 
-## Q4 -- robustness (`exp4_*.csv`)
+## Q4: robustness (`exp4_*.csv`)
 
 ### Input noise (test-time Gaussian perturbation, clean training)
 
@@ -325,8 +325,8 @@ first, while B/B0/C track each other.
 | mean | 4 | 0.666 | 0.758 | 0.762 | 0.762 |
 
 **Deployment-domain labels beat source-domain data volume**: at scale shift 2,
-25 target-domain support samples lift A from 0.434 to 0.595 -- above the
-source-trained full-data pipelines (0.568/0.574) -- and at severity 4 they stay
+25 target-domain support samples lift A from 0.434 to 0.595, above the
+source-trained full-data pipelines (0.568/0.574); at severity 4 they stay
 ahead (0.476 vs 0.432). This is the direct synthetic analogue of HyperLiDAR's
 few-shot post-deployment adaptation.
 
@@ -375,7 +375,7 @@ comparison in Q2).
   features) C is never more than 1.6 points below B in any of the 20 settings
   (better in 11, worse in 4, tied in 5; it reaches +7.8 points where B's
   retraining hurts itself), with paired means of +0.013 overlap, +0.007
-  capacity, +0.002 imbalance and +0.0004 noise dims -- at 9.5% of B's encode
+  capacity, +0.002 imbalance and +0.0004 noise dims, all at 9.5% of B's encode
   budget. The only systematic gap is label noise: at 40% flips C is 5.1 points
   below B (paired -0.021) and 15 points below the random-only buffer.
 * **The full-data baseline is not a strong target on stationary data.** Paired
@@ -387,8 +387,8 @@ comparison in Q2).
 * **Target-domain support is the cheapest adaptation lever under shift.** Under
   per-feature scale shift, 25 shifted-domain support samples lift A from 0.434
   to 0.595 (severity 2) and from 0.338 to 0.476 (severity 4), in both cases
-  above the source-trained full/buffer pipelines (0.568/0.574 and 0.432/0.426)
-  -- the direct analogue of the HyperLiDAR adaptation premise.
+  above the source-trained full/buffer pipelines (0.568/0.574 and 0.432/0.426).
+  This is the direct analogue of the HyperLiDAR adaptation premise.
 
 ### 2. Where few-shot breaks down (comparisons to full-data training)
 
@@ -443,7 +443,7 @@ comparison in Q2).
 * **Prototype estimation follows a decreasing-variance law while interference
   does not**: at SNR 0.25 the cosine error `1 - cos` falls from 0.368 at 1 shot
   to 0.048 at 16 shots (roughly `1/n`) while the margin only moves from -0.061
-  to -0.019 -- averaging more samples fixes the *estimate*, but only enough
+  to -0.019: averaging more samples fixes the *estimate*, but only enough
   samples (or features, or fewer classes) fix the *geometry*.
 
 ## Deviations and limitations

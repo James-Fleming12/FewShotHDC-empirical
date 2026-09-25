@@ -1,19 +1,19 @@
-"""Exp 4 -- robustness to input noise, domain shift, prior shift and imbalance.
+"""Exp 4: robustness to input noise, domain shift, prior shift and imbalance.
 
 Five stress tests, all comparing the three configurations (few-shot A, full
 retrain B, buffered retrain C, plus the full-data-mean reference B0):
 
-* ``feature_noise``  -- Gaussian noise added to the test inputs (measurement
+* ``feature_noise``:  Gaussian noise added to the test inputs (measurement
   noise at deployment; models are trained on clean data).
-* ``domain_shift``   -- covariate shift of the test domain: (a) mean shift along
+* ``domain_shift``:   covariate shift of the test domain: (a) mean shift along
   a random direction, (b) variance inflation (extra Gaussian noise), graded in
   units of the training within-class noise std.
-* ``support_shift``  -- few-shot support drawn from the shifted domain while the
+* ``support_shift``:  few-shot support drawn from the shifted domain while the
   test set is shifted too (does per-deployment support adaptation recover the
   accuracy the source-support prototypes lose?).
-* ``prior_shift``    -- test-time class-prior skew (two classes dominate the
+* ``prior_shift``:    test-time class-prior skew (two classes dominate the
   test stream); macro recall is the metric that matters.
-* ``imbalance``      -- long-tailed training pools with *balanced* vs *natural*
+* ``imbalance``:      long-tailed training pools with *balanced* vs *natural*
   few-shot support sampling.
 
 Outputs: one CSV + figure per subtest in ``results/``.

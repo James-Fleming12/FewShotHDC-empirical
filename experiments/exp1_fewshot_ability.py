@@ -1,4 +1,4 @@
-"""Exp 1 -- how far does few-shot HDC get?
+"""Exp 1: how far does few-shot HDC get?
 
 Question 1: what few-shot ability does the HDC prototype have, and how does it
 compare with the full retraining pipelines?

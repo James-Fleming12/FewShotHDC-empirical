@@ -7,10 +7,10 @@ and is deterministic after ``fit`` (stateless encoding), which lets the
 experiments encode a dataset once and index support/buffer subsets without
 changing semantics.
 
-* ``RPEncoder``      -- ``hd_encoder="rp"``: linear random projection followed
+* ``RPEncoder``      : ``hd_encoder="rp"``, linear random projection followed
   by ``hard_quantize`` (sign).  With ``gauss_rp=True`` (the reference default)
   the weights are QR-orthogonalised Gaussian rows when ``q >= d_in``.
-* ``IDLevelEncoder`` -- ``hd_encoder="idlevel"``: a per-feature position
+* ``IDLevelEncoder`` : ``hd_encoder="idlevel"``, a per-feature position
   (identity) hypervector is bound (element-wise product) with a quantised
   value/level hypervector, the bound terms are bundled (summed) and
   hard-quantised.
