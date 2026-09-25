@@ -22,7 +22,7 @@ RESULTS.mkdir(exist_ok=True)
 
 __all__ = [
     "RESULTS", "ROOT", "encode_dataset", "run_configs", "evaluate_model",
-    "save_csv", "mean_std", "fmt_ci", "CI",
+    "save_csv", "mean_std", "fmt_ci", "CI", "CONFIG_COLORS", "basic_rows", "line_plot",
 ]
 
 # --------------------------------------------------------------------------- #
@@ -166,3 +166,52 @@ def CI(series) -> float:
     if arr.size < 2:
         return 0.0
     return 1.96 * arr.std(ddof=1) / np.sqrt(arr.size)
+
+
+# --------------------------------------------------------------------------- #
+# shared run/plot recipes for the stress-test experiments
+# --------------------------------------------------------------------------- #
+CONFIG_COLORS = {
+    "fewshot": "#4878cf", "full": "#d65f5f", "buffer": "#6acc65",
+    "buffer_random": "#b47cc7", "full_init": "#8c8c8c",
+    "fewshot_balanced": "#4878cf", "fewshot_natural": "#9ab8e0",
+    "source": "#4878cf", "shifted": "#6acc65",
+}
+
+
+def basic_rows(ds, enc, cfg, shots, seed, extra, H, selections=("hard_random",)):
+    """few-shot + full-init + full + buffered (+ extra buffer controls) rows."""
+    rows, _ = run_configs(ds, enc, shots=shots, retrain=cfg, seed=seed,
+                          configs=("fewshot", "full_init", "full", "buffer"),
+                          selection="hard_random", extra=extra, H=H)
+    out = list(rows)
+    for sel in selections:
+        if sel == "hard_random":
+            continue
+        r, _ = run_configs(ds, enc, shots=shots, retrain=cfg, seed=seed,
+                           configs=("buffer",), selection=sel, extra=extra, H=H)
+        out += r
+    return out
+
+
+def line_plot(ax, df, x, y, hue="config", ylim=(0, 1.02), logx=False,
+              ylabel="test accuracy", xlabel=None, chance=None, title=None):
+    """Mean line + 95% CI error bars per ``hue`` group over seeds."""
+    for key, sub in df.groupby(hue):
+        agg = sub.groupby(x)[y].agg(["mean", "std", "count"]).reset_index()
+        err = np.where(agg["count"] > 1,
+                       1.96 * agg["std"].fillna(0.0) / np.sqrt(agg["count"].clip(lower=1)), 0.0)
+        ax.errorbar(agg[x], agg["mean"], yerr=err, marker="o", capsize=3,
+                    label=key, color=CONFIG_COLORS.get(key))
+    if chance is not None:
+        ax.axhline(chance, color="gray", ls=":", lw=1)
+    if logx:
+        ax.set_xscale("log", base=2)
+    ax.set_xlabel(xlabel or x)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    ax.grid(alpha=0.3)
+    if ylim:
+        ax.set_ylim(*ylim)
+    ax.legend(fontsize=8)

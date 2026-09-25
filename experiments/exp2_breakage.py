@@ -25,11 +25,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from common import RESULTS, encode_dataset, run_configs
+from common import (RESULTS, basic_rows, encode_dataset, line_plot, run_configs)
 from modules import RetrainConfig, make_encoder, make_gaussian, sample_support
-
-CONFIG_COLORS = {"fewshot": "#4878cf", "full": "#d65f5f", "buffer": "#6acc65",
-                 "buffer_random": "#b47cc7", "full_init": "#8c8c8c"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -74,42 +71,6 @@ def _retrain(args, seed: int) -> RetrainConfig:
                          buffer_fraction=args.buffer_fraction, seed=seed)
 
 
-def _basic_rows(ds, enc, cfg, shots, seed, extra, H, selections=("hard_random",)):
-    rows, _ = run_configs(ds, enc, shots=shots, retrain=cfg, seed=seed,
-                          configs=("fewshot", "full_init", "full", "buffer"),
-                          selection="hard_random", extra=extra, H=H)
-    out = list(rows)
-    for sel in selections:
-        if sel == "hard_random":
-            continue
-        r, _ = run_configs(ds, enc, shots=shots, retrain=cfg, seed=seed,
-                           configs=("buffer",), selection=sel, extra=extra, H=H)
-        out += r
-    return out
-
-
-def _line_plot(ax, df, x, y, hue="config", ylim=(0, 1.02), logx=False,
-               ylabel="test accuracy", xlabel=None, chance=None, title=None):
-    for key, sub in df.groupby(hue):
-        agg = sub.groupby(x)[y].agg(["mean", "std", "count"]).reset_index()
-        err = np.where(agg["count"] > 1,
-                       1.96 * agg["std"].fillna(0.0) / np.sqrt(agg["count"]), 0.0)
-        ax.errorbar(agg[x], agg["mean"], yerr=err, marker="o", capsize=3,
-                    label=key, color=CONFIG_COLORS.get(key))
-    if chance is not None:
-        ax.axhline(chance, color="gray", ls=":", lw=1)
-    if logx:
-        ax.set_xscale("log", base=2)
-    ax.set_xlabel(xlabel or x)
-    ax.set_ylabel(ylabel)
-    if title:
-        ax.set_title(title)
-    ax.grid(alpha=0.3)
-    if ylim:
-        ax.set_ylim(*ylim)
-    ax.legend(fontsize=8)
-
-
 def _summary(df: pd.DataFrame, group_cols, value="acc") -> pd.DataFrame:
     return df.pivot_table(index=group_cols, columns="config", values=value,
                           aggfunc="mean").round(3)
@@ -133,17 +94,17 @@ def subtest_overlap(args):
             enc = make_encoder(args.encoder, args.hd_dim, seed=seed,
                                **({"levels": args.levels} if args.encoder == "idlevel" else {}))
             H = encode_dataset(ds, enc)
-            rows += _basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
+            rows += basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
                                 {"snr": snr}, H, selections=("hard_random", "random"))
             print(f"[overlap snr={snr:g} seed={seed}] done", flush=True)
     df = pd.DataFrame(rows)
     _save(df, "exp2_overlap", args.tag)
     print(_summary(df, ["snr"]))
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4))
-    _line_plot(axes[0], df, "snr", "acc", ylabel="test accuracy",
+    line_plot(axes[0], df, "snr", "acc", ylabel="test accuracy",
                xlabel="SNR (per-feature class separation / noise)", logx=True,
                chance=1 / args.classes, title="class overlap")
-    _line_plot(axes[1], df, "snr", "min_class_recall", ylabel="rarest-class recall",
+    line_plot(axes[1], df, "snr", "min_class_recall", ylabel="rarest-class recall",
                xlabel="SNR", logx=True, title="class overlap (rare class)")
     fig.tight_layout()
     out = RESULTS / f"fig_exp2_overlap{args.tag}.png"
@@ -161,7 +122,7 @@ def subtest_label_noise(args):
             enc = make_encoder(args.encoder, args.hd_dim, seed=seed,
                                **({"levels": args.levels} if args.encoder == "idlevel" else {}))
             H = encode_dataset(ds, enc)
-            rows += _basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
+            rows += basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
                                 {"label_noise": noise}, H,
                                 selections=("hard_random", "random"))
             print(f"[label_noise {noise:g} seed={seed}] done", flush=True)
@@ -169,10 +130,10 @@ def subtest_label_noise(args):
     _save(df, "exp2_label_noise", args.tag)
     print(_summary(df, ["label_noise"]))
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4))
-    _line_plot(axes[0], df, "label_noise", "acc",
+    line_plot(axes[0], df, "label_noise", "acc",
                xlabel="fraction of flipped training labels", chance=1 / args.classes,
                title="label noise")
-    _line_plot(axes[1], df, "label_noise", "min_class_recall",
+    line_plot(axes[1], df, "label_noise", "min_class_recall",
                xlabel="fraction of flipped training labels", title="rarest-class recall")
     fig.tight_layout()
     out = RESULTS / f"fig_exp2_label_noise{args.tag}.png"
@@ -190,7 +151,7 @@ def subtest_capacity(args):
             enc = make_encoder(args.encoder, q, seed=seed,
                                **({"levels": args.levels} if args.encoder == "idlevel" else {}))
             H = encode_dataset(ds, enc)
-            rows += _basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
+            rows += basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
                                 {"capacity_dim": q, "capacity_classes": args.capacity_classes},
                                 H, selections=("hard_random",))
             print(f"[capacity q={q} seed={seed}] done", flush=True)
@@ -198,10 +159,10 @@ def subtest_capacity(args):
     _save(df, "exp2_capacity", args.tag)
     print(_summary(df, ["capacity_dim"]))
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4))
-    _line_plot(axes[0], df, "capacity_dim", "acc", logx=True,
+    line_plot(axes[0], df, "capacity_dim", "acc", logx=True,
                xlabel="hypervector dimension q", chance=1 / args.capacity_classes,
                title=f"encoder capacity ({args.capacity_classes} classes)")
-    _line_plot(axes[1], df, "capacity_dim", "min_class_recall", logx=True,
+    line_plot(axes[1], df, "capacity_dim", "min_class_recall", logx=True,
                xlabel="hypervector dimension q", title="rarest-class recall")
     fig.tight_layout()
     out = RESULTS / f"fig_exp2_capacity{args.tag}.png"
@@ -222,7 +183,7 @@ def subtest_imbalance(args):
             enc = make_encoder(args.encoder, args.hd_dim, seed=seed,
                                **({"levels": args.levels} if args.encoder == "idlevel" else {}))
             H = encode_dataset(ds, enc)
-            rows += _basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
+            rows += basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
                                 {"imbalance_ratio": ratio, "counts": str(counts)}, H,
                                 selections=("hard_random",))
             print(f"[imbalance ratio={ratio:g} counts={counts} seed={seed}] done", flush=True)
@@ -232,10 +193,10 @@ def subtest_imbalance(args):
     print("\nmin-class recall:")
     print(_summary(df, ["imbalance_ratio"], value="min_class_recall"))
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4))
-    _line_plot(axes[0], df, "imbalance_ratio", "acc",
+    line_plot(axes[0], df, "imbalance_ratio", "acc",
                xlabel="class-count ratio between neighbours", chance=1 / args.classes,
                title="overall accuracy")
-    _line_plot(axes[1], df, "imbalance_ratio", "min_class_recall",
+    line_plot(axes[1], df, "imbalance_ratio", "min_class_recall",
                xlabel="class-count ratio between neighbours", title="rarest-class recall")
     fig.tight_layout()
     out = RESULTS / f"fig_exp2_imbalance{args.tag}.png"
@@ -326,17 +287,17 @@ def subtest_noise_dims(args):
             enc = make_encoder(args.encoder, args.hd_dim, seed=seed,
                                **({"levels": args.levels} if args.encoder == "idlevel" else {}))
             H = encode_dataset(ds, enc)
-            rows += _basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
+            rows += basic_rows(ds, enc, _retrain(args, seed), args.shots, seed,
                                 {"n_noise_dims": n_noise}, H, selections=("hard_random",))
             print(f"[noise_dims {n_noise} seed={seed}] done", flush=True)
     df = pd.DataFrame(rows)
     _save(df, "exp2_noise_dims", args.tag)
     print(_summary(df, ["n_noise_dims"]))
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4))
-    _line_plot(axes[0], df, "n_noise_dims", "acc",
+    line_plot(axes[0], df, "n_noise_dims", "acc",
                xlabel="number of irrelevant features", chance=1 / args.classes,
                title="irrelevant feature dilution")
-    _line_plot(axes[1], df, "n_noise_dims", "min_class_recall",
+    line_plot(axes[1], df, "n_noise_dims", "min_class_recall",
                xlabel="number of irrelevant features", title="rarest-class recall")
     fig.tight_layout()
     out = RESULTS / f"fig_exp2_noise_dims{args.tag}.png"
