@@ -149,15 +149,17 @@ Mean test accuracy (chance = 0.20):
 | 0.50 | 0.231 | 0.259 | 0.334 | 0.429 | 0.452 | 0.522 | 0.516 | 0.482 |
 | 1.00 | 0.418 | 0.597 | 0.716 | 0.809 | 0.860 | 0.880 | 0.882 | 0.882 |
 
-* At SNR = 1, one shot already reaches 0.42 (2.1x chance) and 20-50 shots land
-  on the full-retrain accuracy: the mean prototype is extremely sample
-  efficient at this separability.
+* At SNR = 1, one shot already reaches 0.42 (2.1x chance) and 20-50 shots give
+  0.860-0.880 against full retraining's 0.882: the mean prototype is extremely
+  sample efficient at this separability.
 * At SNR = 0.5, ~50 shots match B; at SNR = 0.25 the task is at chance for
   every pipeline: the few-shot ceiling is set by class overlap, not by sample
   count (Q3 shows why).
-* C matches B within 0.004-0.034 at 9.5% of the encode budget. The `idlevel`
-  encoder reproduces the same picture at full settings (SNR 1: 50-shot 0.880,
-  B 0.884, C 0.877; `rp`: 0.880 / 0.882 / 0.882).
+* C tracks B closely at 9.5% of the encode budget (paired differences +0.0004
+  to +0.013 across the clean-data stress tests; worst single-setting gap 1.6
+  points below B, up to 7.9 points above). The `idlevel` encoder reproduces the
+  same picture at full settings (SNR 1: 50-shot 0.880, B 0.884, C 0.877;
+  `rp`: 0.880 / 0.882 / 0.882).
 
 ## Q2 -- where it breaks (`exp2_*.csv`)
 
@@ -171,9 +173,10 @@ Mean test accuracy (chance = 0.20):
 | 1.00 | 0.716 | 0.882 | 0.888 | 0.882 | 0.886 |
 | 2.00 | 0.994 | 0.998 | 0.998 | 0.998 | 0.998 |
 
-A loses 12-21 points in the intermediate regime (0.35-0.6) where few samples
-cannot span the class distribution, and the gap persists at SNR = 1 (0.716 vs
-0.882). Overlap is the primary few-shot failure axis.
+A is within a few points of B while the task is near chance (SNR <= 0.35),
+then falls behind once the classes become separable: 21 points at SNR 0.6 and
+17 points at SNR 1, where few support samples cannot span the class
+distribution. Overlap is the primary few-shot failure axis.
 
 ### Label noise (flipped training labels)
 
@@ -359,43 +362,89 @@ comparison in Q2).
 
 ## Main takeaways
 
-1. **Few-shot HDC works when classes are separable, and saturates onto full
-   retraining there.** At SNR = 1, 1 shot gives 0.42 and 20-50 shots match the
-   10,500-sample full pipeline (0.880 vs 0.882) using 2.4% of its encode
-   budget. Below SNR ~ 0.5 the ceiling is overlap, not sample count.
-2. **Buffered retraining is an accurate and cheap stand-in for full retraining
-   on clean, stationary data**: within 0.4-3.4 points at 9.5% of the encode
-   budget, across every stress test except label noise.
-3. **Retraining rarely earns its cost on stationary synthetic tasks.** Paired
-   over seeds, B is significantly *worse* than B0 (no retraining) in every
-   Exp-2 stress test (mean differences -0.007 to -0.124, p <= 0.034): the
-   error-driven pull/push on already-fit prototypes mostly encodes noise. Its
-   value would have to come from non-stationarity, which these tests do not
-   model.
-4. **Hard-sample mining and label noise are incompatible.** At 40% flipped
-   labels the hard+random buffer reaches 0.446 while a random buffer reaches
-   0.596 and the un-retrained full means stay at 0.854. Any deployment using
-   hard mining should validate the hard fraction against label quality.
-5. **Balanced support is the key to long tails.** Full-data pipelines collapse
-   rare-class recall (0.22 at ratio 4; B0 0.34) while balanced few-shot support
-   holds 0.52-0.57 and wins overall accuracy at ratio 4. Natural support
-   sampling destroys even few-shot prototypes (rare recall 0.00, accuracy
-   0.25-0.33). Prototype quality under imbalance is a property of the support
-   distribution, not of the HDC readout.
-6. **Failure ordering is consistent across axes**: few-shot prototypes are the
-   most fragile under feature noise, domain shift, irrelevant features and
-   support contamination; full-data variants differ mostly through
-   susceptibility to label noise. All pipelines collapse at small `q`, at
-   severe overlap (SNR <= 0.1) and under strong within-class shifts.
-7. **Prototype fidelity is necessary but not sufficient.** Cosine to the oracle
-   reaches 0.95+ long before the decision margin becomes positive. Shots to
-   80% accuracy fall with feature count (6.9 -> 2.1 for d = 32 -> 64) and rise
-   with class count (1.5 -> 6.9 -> 22.4 for C = 2 -> 5 -> 10).
-8. **Target-domain labels are the most valuable resource under shift.** A
-   25-sample target-domain support beats source-trained full-data pipelines
-   under moderate/strong per-feature shift, matching the HyperLiDAR adaptation
-   premise. Prototypes are prior-free, so class-prior shift needs no
-   correction (and cannot be exploited either).
+### 1. How few-shot competes with full-data training (favourable conditions)
+
+* **With separable classes it matches full retraining at a fraction of the
+  cost.** At SNR = 1, one shot reaches 0.42 (2.1x chance); 50 shots (250
+  samples, 2.4% of the full pipeline's encode budget) reach 0.880 against B's
+  0.882, and even 20 shots give 0.860. The same holds in the intermediate
+  regime: at SNR = 0.5, 50 shots (0.522) match B (0.516). The `idlevel` encoder
+  reproduces it (50-shot 0.880 vs B 0.884).
+* **Buffered retraining is a cheap stand-in for the full loop.** Across the
+  four clean-data stress tests (overlap, capacity, imbalance, irrelevant
+  features) C is never more than 1.6 points below B in any of the 20 settings
+  (better in 11, worse in 4, tied in 5; it reaches +7.8 points where B's
+  retraining hurts itself), with paired means of +0.013 overlap, +0.007
+  capacity, +0.002 imbalance and +0.0004 noise dims -- at 9.5% of B's encode
+  budget. The only systematic gap is label noise: at 40% flips C is 5.1 points
+  below B (paired -0.021) and 15 points below the random-only buffer.
+* **The full-data baseline is not a strong target on stationary data.** Paired
+  over seeds, B is significantly *worse* than the un-retrained full means B0 in
+  every Exp-2 test that compares them (mean differences -0.007 to -0.124,
+  p <= 0.034): error-driven pull/push on already-fit prototypes mostly encodes
+  noise. This is the regime in which few-shot "wins" by default;
+  non-stationarity is where the full pipeline would have to earn its keep.
+* **Target-domain support is the cheapest adaptation lever under shift.** Under
+  per-feature scale shift, 25 shifted-domain support samples lift A from 0.434
+  to 0.595 (severity 2) and from 0.338 to 0.476 (severity 4), in both cases
+  above the source-trained full/buffer pipelines (0.568/0.574 and 0.432/0.426)
+  -- the direct analogue of the HyperLiDAR adaptation premise.
+
+### 2. Where few-shot breaks down (comparisons to full-data training)
+
+* **Class overlap is the primary boundary.** When the task is near chance
+  (SNR <= 0.35) few-shot and full retraining are within 4 points of each other;
+  once it becomes learnable the gap opens: at SNR 0.6, A 0.400 vs B 0.608; at
+  SNR 1, A 0.716 vs B 0.882. At SNR <= 0.25 no pipeline exceeds ~0.28: the
+  ceiling is geometric, not a sample-count problem.
+* **Low-margin regimes hit A first.** Under test-input noise A is consistently
+  the weakest (paired over all noise levels: A - B = -0.141, p < 1e-4); under
+  per-feature scale shift at severity 2, A 0.448 vs B 0.614; under variance
+  inflation at severity 2, 0.394 vs 0.483.
+* **Irrelevant features dilute the few-shot prototype before they hurt the full
+  pipeline**: A drops to 0.481/0.338 at 64/256 extra features while B stays at
+  0.874/0.724.
+* **Capacity/interference**: at q = 64 with 10 classes A is the most damaged
+  (0.418 vs B 0.533, B0 0.599); all pipelines stabilise from q >= 1024.
+* **Contaminated support** (A only, since B/C train on the clean pool): 40%
+  support label flips cost 0.254 (0.738 -> 0.484) and 40% feature outliers cost
+  0.143 (0.738 -> 0.595); label flips are ~2x as damaging per corrupted
+  sample.
+* **Label noise: a nuance.** With 40% flipped training labels, A (0.507) is
+  relatively robust compared with hard+random buffering C (0.446) and even B
+  (0.497), but far below the un-retrained means B0 (0.854) and the random-only
+  buffer (0.596). Retraining and hard mining fail together ("hard" examples are
+  usually the mislabelled ones); few-shot only fails partially, because its
+  prototype is a simple average that averages label noise out. Any deployment
+  using hard mining should validate the hard fraction against label quality.
+* **Imbalance: the failure is in support sampling, not the readout.** Balanced
+  support lets A beat the full pipeline on rare-class recall (0.52 vs 0.22 at
+  ratio 4) and on overall accuracy (0.730 vs 0.643); natural
+  (frequency-proportional) support instead destroys A (rare recall 0.00,
+  accuracy 0.25-0.33 at ratio 4-8). Full-data pipelines lose rare classes
+  regardless (B 0.22, B0 0.34 at ratio 4).
+* **One axis is not a failure**: cosine prototypes are prior-free, so a 10x
+  class-prior skew changes stream accuracy by at most ~2 points and leaves
+  macro recall stable (0.734 -> 0.764 for A).
+
+### 3. Prototype properties that need more samples
+
+* **Fidelity saturates long before usability.** Cosine to an oracle prototype
+  reaches 0.95+ by 16 shots at every SNR tested (0.988-0.998 at 64 shots), but
+  the decision margin is still negative at SNR 0.25 after 64 shots: a prototype
+  can look exactly like the infinite-data prototype and remain unseparated from
+  its neighbours.
+* **Shots for a positive margin scale sharply with overlap**: 1 shot at
+  SNR 2, 2 at SNR 1, ~32-64 at SNR 0.5, and never within 64 at SNR 0.25.
+* **Shots to 80% accuracy fall with feature count and rise with class count**:
+  6.9 -> 2.1 shots for d = 32 -> 64 (unreachable at d <= 16), and 1.5 -> 6.9 ->
+  22.4 shots for C = 2 -> 5 -> 10. Prototype interference between classes is a
+  first-order driver of sample complexity, alongside overlap.
+* **Prototype estimation follows a decreasing-variance law while interference
+  does not**: at SNR 0.25 the cosine error `1 - cos` falls from 0.368 at 1 shot
+  to 0.048 at 16 shots (roughly `1/n`) while the margin only moves from -0.061
+  to -0.019 -- averaging more samples fixes the *estimate*, but only enough
+  samples (or features, or fewer classes) fix the *geometry*.
 
 ## Deviations and limitations
 
